@@ -3,9 +3,14 @@ const app = express();
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 var mySalt = 'secretkey';
+const productSchema = require('./productSchema');
+const dotenv = require('dotenv');
+import connectDB from './config/db.js';
 
 const port = 8080;
 
+dotenv.config();
+connectDB();
 app.use(express.json());
 app.use(cors());
 app.listen(port, (err) => {
@@ -50,4 +55,23 @@ app.post('/removedp', (req, res) => {
   } else {
     res.status(401).send({ msg: 'Unauthorized request for DP removal' });
   }
+});
+
+//getting product list
+app.post('/getproducts', async (req, res) => {
+  // const product_details = {
+  //   id: "LU_01",
+  //   category: "Electronics",
+  //   name: "Headphone",
+  //   quantity: 20,
+  //   price: 300,
+  //   shipping: 5,
+  //   unitsSold: 15,
+  // };
+  // const product = new productSchema(product_details);
+  // const add = await product.save();
+  // console.log(add);
+  const products = await productSchema.find({});
+  // console.log(products);
+  res.status(200).send(products);
 });

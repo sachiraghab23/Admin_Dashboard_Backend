@@ -3,10 +3,11 @@ const app = express();
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 var mySalt = 'secretkey';
-const productSchema = require('./productSchema');
+// const productSchema = require('./schemas/productSchema.js');
+const userSchema = require('./schemas/userSchema');
 const dotenv = require('dotenv');
-import connectDB from './config/db.js';
-
+const connectDB = require('./config/db.js');
+var temp = 0;
 const port = 8080;
 
 dotenv.config();
@@ -59,19 +60,64 @@ app.post('/removedp', (req, res) => {
 
 //getting product list
 app.post('/getproducts', async (req, res) => {
-  // const product_details = {
-  //   id: "LU_01",
-  //   category: "Electronics",
-  //   name: "Headphone",
-  //   quantity: 20,
-  //   price: 300,
-  //   shipping: 5,
-  //   unitsSold: 15,
-  // };
-  // const product = new productSchema(product_details);
-  // const add = await product.save();
-  // console.log(add);
-  const products = await productSchema.find({});
-  // console.log(products);
+  var token = req.headers.authorization;
+  var decoded = jwt.verify(token, mySalt);
+  const products = await userSchema.find({
+    username: decoded.username
+  });
   res.status(200).send(products);
+});
+
+//filtering product list by category
+app.post('/filter-by-category', async (req, res) => {
+  var token = req.headers.authorization;
+  var decoded = jwt.verify(token, mySalt);
+  var username = decoded.username;
+  if (req.body.category == "") {
+    var products = await userSchema.find({
+      username: username,
+    });
+    const prodArr = products.map((elem) => {
+      return elem.associatedProducts;
+    });
+    res.status(200).send(prodArr);
+  }
+  else {
+    var products = await userSchema.find({
+      username: username, "associatedProducts.category": req.body.category,
+    });
+    var prodArr = products.map((elem) => {
+      return elem.associatedProducts;
+    });
+    res.status(200).send(prodArr);
+  }
+});
+
+//adding product into database
+app.post('/addproduct', async (req, res) => {
+  try {
+    const { name, shipping, category, quantity, price } = req.body;
+    var token = req.header.authorization;
+    var decoded = jwt.verify(token, mySalt);
+    console.log(decoded);
+    const username = decoded.username;
+    var newProduct = {
+      username: username,
+      associatedProducts: {
+        name: name,
+        id: "LU_" + (++temp),
+        shipping: shipping,
+        category: category,
+        quantity: quantity,
+        price: price
+      }
+    };
+    const product = new userSchema(newProduct);
+    const stocked = await product.save();
+    if (stocked) {
+      res.status(200).send({ message: "product added successfully" });
+    }
+  } catch (err) {
+    res.status(500).send({ message: "Some error occurred", error: err });
+  }
 });
